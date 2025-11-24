@@ -11,8 +11,23 @@ public class Main {
     static Map<String, Integer> wrongCardsGuesses = new TreeMap<>();
     private static List<String> log = new ArrayList<>();
     static Scanner sc = new Scanner(System.in);
+    private static String importFilename;
+    private static String exportFilename;
+    private static Boolean exportFile = false;
 
     public static void main(String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].equals("-import")) {
+                importFilename = args[i + 1];
+                importFileCMD(importFilename);
+            }
+            else if (args[i].equals("-export")) {
+                exportFilename = args[i + 1];
+                exportFile = true;
+            }
+        }
+
+
         while (true) {
             logOutput("Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):");
             Scanner sc = new Scanner(System.in);
@@ -42,6 +57,9 @@ public class Main {
                     resetStats();
                     break;
                 case "exit":
+                    if(exportFile){
+                        exportFileCMD(exportFilename);
+                    }
                     logOutput("Bye bye!");
                     return;
             }
@@ -91,58 +109,6 @@ public class Main {
 
     }
 
-    private static void exportFile() {
-        logOutput("File name:");
-        String fileName = logInput();
-
-        int savedCount = 0;
-
-        try (FileWriter writer = new FileWriter(fileName)) {
-            for (Map.Entry<String, String> entry : dictionary.entrySet()) {
-                int mistakes = wrongCardsGuesses.get(entry.getKey()) == null ? 0
-                        : wrongCardsGuesses.get(entry.getKey());
-                writer.write(entry.getKey() + ":" + entry.getValue() + ":" + mistakes + "\n");
-                savedCount++;
-            }
-            logOutput(savedCount + " cards have been saved.");
-        } catch (IOException e) {
-            logOutput("An error occurred while saving the file.");
-        }
-    }
-
-    private static void askCard() {
-        logOutput("How many times to ask?\n");
-        int count = Integer.parseInt(logInput());
-
-        Random random = new Random();
-        List<String> terms = new ArrayList<>(dictionary.keySet());
-        for (int i = 0; i < count; i++) {
-            String term = terms.get(random.nextInt(terms.size()));
-            String definition = dictionary.get(term);
-
-            logOutput("Print the definition of \"" + term + "\":");
-            String answer = logInput();
-
-            if (answer.equals(definition)) {
-                logOutput("Correct!");
-            } else if (dictionary.containsValue(answer)) {
-                int gets = wrongCardsGuesses.get(term) == null ? 0 : wrongCardsGuesses.get(term);
-                wrongCardsGuesses.put(term, gets + 1);
-                String otherTerm = dictionary.entrySet().stream()
-                        .filter(entry -> entry.getValue().equals(answer))
-                        .map(Map.Entry::getKey)
-                        .findFirst()
-                        .orElse("");
-                logOutput("Wrong. The right answer is \"" + definition +
-                        "\", but your answer is correct for \"" + otherTerm + "\".");
-            } else {
-                int gets = wrongCardsGuesses.get(term) == null ? 0 : wrongCardsGuesses.get(term);
-                wrongCardsGuesses.put(term, gets + 1);
-                logOutput("Wrong. The right answer is \"" + definition + "\".");
-            }
-        }
-    }
-
     private static void importFile() {
         logOutput("File name:");
         String inputFile = logInput();
@@ -179,6 +145,116 @@ public class Main {
             logOutput(loadedCount + " cards have been loaded.");
         } catch (FileNotFoundException e) {
             logOutput("File not found.");
+        }
+    }
+
+    private static void importFileCMD(String importFilename) {
+        String inputFile = importFilename;
+
+        File file = new File(inputFile);
+        if (!file.exists()) {
+            logOutput("File not found.");
+            return;
+        }
+
+        int loadedCount = 0;
+
+        try (Scanner fileScanner = new Scanner(file)) {
+            while (fileScanner.hasNextLine()) {
+                String line = fileScanner.nextLine();
+                String[] parts = line.split(":");
+                if (parts.length == 3) {
+                    String term = parts[0];
+                    String definition = parts[1];
+                    int mistakes = Integer.parseInt(parts[2]);
+                    wrongCardsGuesses.put(term, mistakes);
+                    dictionary.put(term, definition);
+                    loadedCount++;
+                } else if (parts.length == 2) {
+                    String term = parts[0];
+                    String definition = parts[1];
+                    int mistakes = 0;
+                    wrongCardsGuesses.put(term, mistakes);
+                    dictionary.put(term, definition);
+                    loadedCount++;
+                }
+                //System.out.println(line + " " + loadedCount);
+            }
+            logOutput(loadedCount + " cards have been loaded.");
+        } catch (FileNotFoundException e) {
+            logOutput("File not found.");
+        }
+    }
+
+    private static void exportFile() {
+        logOutput("File name:");
+        String fileName = logInput();
+
+        int savedCount = 0;
+
+        try (FileWriter writer = new FileWriter(fileName)) {
+            for (Map.Entry<String, String> entry : dictionary.entrySet()) {
+                int mistakes = wrongCardsGuesses.get(entry.getKey()) == null ? 0
+                        : wrongCardsGuesses.get(entry.getKey());
+                writer.write(entry.getKey() + ":" + entry.getValue() + ":" + mistakes + "\n");
+                savedCount++;
+            }
+            logOutput(savedCount + " cards have been saved.");
+        } catch (IOException e) {
+            logOutput("An error occurred while saving the file.");
+        }
+    }
+
+    private static void exportFileCMD(String exportFilename) {
+        String fileName = exportFilename;
+
+        int savedCount = 0;
+
+        try (FileWriter writer = new FileWriter(fileName)) {
+            for (Map.Entry<String, String> entry : dictionary.entrySet()) {
+                int mistakes = wrongCardsGuesses.get(entry.getKey()) == null ? 0
+                        : wrongCardsGuesses.get(entry.getKey());
+                writer.write(entry.getKey() + ":" + entry.getValue() + ":" + mistakes + "\n");
+                savedCount++;
+            }
+            logOutput(savedCount + " cards have been saved.");
+        } catch (IOException e) {
+            logOutput("An error occurred while saving the file.");
+        }
+    }
+
+
+
+    private static void askCard() {
+        logOutput("How many times to ask?\n");
+        int count = Integer.parseInt(logInput());
+
+        Random random = new Random();
+        List<String> terms = new ArrayList<>(dictionary.keySet());
+        for (int i = 0; i < count; i++) {
+            String term = terms.get(random.nextInt(terms.size()));
+            String definition = dictionary.get(term);
+
+            logOutput("Print the definition of \"" + term + "\":");
+            String answer = logInput();
+
+            if (answer.equals(definition)) {
+                logOutput("Correct!");
+            } else if (dictionary.containsValue(answer)) {
+                int gets = wrongCardsGuesses.get(term) == null ? 0 : wrongCardsGuesses.get(term);
+                wrongCardsGuesses.put(term, gets + 1);
+                String otherTerm = dictionary.entrySet().stream()
+                        .filter(entry -> entry.getValue().equals(answer))
+                        .map(Map.Entry::getKey)
+                        .findFirst()
+                        .orElse("");
+                logOutput("Wrong. The right answer is \"" + definition +
+                        "\", but your answer is correct for \"" + otherTerm + "\".");
+            } else {
+                int gets = wrongCardsGuesses.get(term) == null ? 0 : wrongCardsGuesses.get(term);
+                wrongCardsGuesses.put(term, gets + 1);
+                logOutput("Wrong. The right answer is \"" + definition + "\".");
+            }
         }
     }
 
